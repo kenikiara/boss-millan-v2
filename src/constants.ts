@@ -1,9 +1,7 @@
 export const DERIV_APP_ID = 3376
 
-export const DERIV_AUTH_URL = 'https://auth.deriv.com/oauth2/auth'
-export const DERIV_TOKEN_URL = 'https://auth.deriv.com/oauth2/token'
-export const DERIV_WS_PUBLIC = 'wss://api.derivws.com/trading/v1/options/ws/public'
-export const DERIV_REST_BASE = 'https://api.derivws.com'
+export const DERIV_AUTH_URL = 'https://oauth.deriv.com/oauth2/authorize'
+export const DERIV_WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`
 
 export const SYNTHETIC_SYMBOLS = [
   'R_10', 'R_25', 'R_50', 'R_75', 'R_100',
@@ -36,7 +34,6 @@ export const MAX_SUBSCRIPTIONS = 100
 export const RECONNECT_DELAY_MS = 3000
 export const PING_INTERVAL_MS = 30000
 
-export const AUTH_CODE_VERIFIER_KEY = 'bm_cv'
-export const AUTH_STATE_KEY = 'bm_state'
 export const AUTH_TOKEN_KEY = 'bm_token'
-export const AUTH_ACCOUNT_KEY = 'bm_account'
+export const AUTH_ACCOUNTS_KEY = 'bm_accounts'
+export const AUTH_SELECTED_ACCOUNT_KEY = 'bm_account'

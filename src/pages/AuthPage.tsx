@@ -1,69 +1,43 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  exchangeCodeForToken,
-  getAccounts,
-  getAuthenticatedWsUrl,
-  saveAccount,
-  startOAuthFlow,
-  verifyState,
-} from '../api/auth'
+import { parseOAuthCallback, saveAccounts, saveSelectedAccount, startOAuthFlow } from '../api/auth'
 import { useConnectionStore } from '../stores/connectionStore'
 
 const REDIRECT_URI = `${window.location.origin}/auth/callback`
 
 function AuthCallback() {
   const navigate = useNavigate()
-  const { setAuth, setStatus, initSocket } = useConnectionStore()
+  const { initSocket, token } = useConnectionStore()
   const [error, setError] = useState<string | null>(null)
-  const [step, setStep] = useState('exchanging token...')
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    const state = params.get('state')
-    const errorParam = params.get('error')
+    if (token) {
+      navigate('/dashboard', { replace: true })
+      return
+    }
 
+    const errorParam = new URLSearchParams(window.location.search).get('error')
     if (errorParam) {
-      setError(`Deriv rejected auth: ${params.get('error_description') ?? errorParam}`)
+      const desc = new URLSearchParams(window.location.search).get('error_description')
+      setError(desc ?? errorParam)
       return
     }
 
-    if (!code) {
-      setError('No authorization code in callback URL.')
+    const result = parseOAuthCallback()
+    if (!result || result.accounts.length === 0) {
+      setError('No accounts found in callback. Please try again.')
       return
     }
 
-    if (state && !verifyState(state)) {
-      setError('State mismatch — possible CSRF. Please try again.')
-      return
-    }
+    const { accounts } = result
 
-    setStatus('AUTHENTICATING')
+    // prefer real account over virtual
+    const selected = accounts.find((a) => !a.is_virtual) ?? accounts[0]
 
-    ;(async () => {
-      try {
-        setStep('exchanging token...')
-        const token = await exchangeCodeForToken(code, REDIRECT_URI)
-
-        setStep('fetching accounts...')
-        const accounts = await getAccounts(token.access_token)
-        if (accounts.length === 0) throw new Error('No trading accounts found on this Deriv profile.')
-        const account = accounts[0]
-
-        setStep('opening secure connection...')
-        const wsUrl = await getAuthenticatedWsUrl(account.account_id, token.access_token)
-
-        saveAccount(account)
-        setAuth(token.access_token, account)
-        initSocket(wsUrl)
-
-        navigate('/dashboard', { replace: true })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error during auth')
-        setStatus('AUTH_REQUIRED')
-      }
-    })()
+    saveAccounts(accounts)
+    saveSelectedAccount(selected)
+    initSocket(selected.token)
+    navigate('/dashboard', { replace: true })
   }, [])
 
   if (error) {
@@ -87,7 +61,7 @@ function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-[#0a0b0e]">
       <div className="text-center space-y-3">
         <div className="w-2 h-2 bg-[#00d4a3] rounded-full animate-pulse mx-auto" />
-        <p className="text-[#64748b] font-mono text-xs">{step}</p>
+        <p className="text-[#64748b] font-mono text-xs">connecting...</p>
       </div>
     </div>
   )
@@ -102,9 +76,9 @@ function LoginPage() {
     if (token) navigate('/dashboard', { replace: true })
   }, [token, navigate])
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     setLoading(true)
-    await startOAuthFlow(REDIRECT_URI)
+    startOAuthFlow(REDIRECT_URI)
   }
 
   return (
@@ -151,4 +125,3 @@ export function AuthPage() {
   const isCallback = window.location.pathname === '/auth/callback'
   return isCallback ? <AuthCallback /> : <LoginPage />
 }
-

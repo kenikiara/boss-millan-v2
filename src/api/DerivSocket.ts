@@ -1,4 +1,4 @@
-import { DERIV_WS_PUBLIC, PING_INTERVAL_MS, RECONNECT_DELAY_MS, WS_RATE_LIMIT } from '../constants'
+import { DERIV_WS_URL, PING_INTERVAL_MS, RECONNECT_DELAY_MS, WS_RATE_LIMIT } from '../constants'
 import type { DerivRequest, DerivResponse } from '../types/deriv'
 
 type MessageHandler = (response: DerivResponse) => void
@@ -25,7 +25,7 @@ export class DerivSocket {
   private destroyed = false
   private onStatusChange: StatusHandler
 
-  constructor(url = DERIV_WS_PUBLIC, onStatusChange: StatusHandler = () => {}) {
+  constructor(url = DERIV_WS_URL, onStatusChange: StatusHandler = () => {}) {
     this.url = url
     this.onStatusChange = onStatusChange
     this.connect()

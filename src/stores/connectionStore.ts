@@ -1,14 +1,12 @@
 import { create } from 'zustand'
 import { DerivSocket } from '../api/DerivSocket'
 import { clearAuth, getSavedAccount, getSavedToken } from '../api/auth'
-import { DERIV_WS_PUBLIC } from '../constants'
-import type { DerivAccount } from '../types/deriv'
+import { DERIV_WS_URL } from '../constants'
+import type { AuthorizeResponse, DerivAccount } from '../types/deriv'
 
 export type ConnectionStatus =
   | 'DISCONNECTED'
   | 'CONNECTING'
-  | 'CONNECTED'
-  | 'AUTH_REQUIRED'
   | 'AUTHENTICATING'
   | 'AUTHENTICATED'
   | 'ERROR'
@@ -20,9 +18,8 @@ interface ConnectionState {
   account: DerivAccount | null
   error: string | null
 
-  initSocket: (wsUrl?: string) => void
+  initSocket: (token: string) => void
   setStatus: (status: ConnectionStatus) => void
-  setAuth: (token: string, account: DerivAccount) => void
   logout: () => void
 }
 
@@ -33,15 +30,39 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   account: getSavedAccount(),
   error: null,
 
-  initSocket: (wsUrl?: string) => {
+  initSocket: (token: string) => {
     const existing = get().socket
     if (existing) existing.destroy()
 
-    set({ status: 'CONNECTING', error: null })
+    set({ status: 'CONNECTING', error: null, token })
 
-    const url = wsUrl ?? DERIV_WS_PUBLIC
-    const socket = new DerivSocket(url, (connected) => {
-      set({ status: connected ? (wsUrl ? 'AUTHENTICATED' : 'CONNECTED') : 'DISCONNECTED' })
+    const socket = new DerivSocket(DERIV_WS_URL, async (connected) => {
+      if (!connected) {
+        set({ status: 'DISCONNECTED' })
+        return
+      }
+
+      set({ status: 'AUTHENTICATING' })
+
+      try {
+        const res = await socket.send({ authorize: token })
+        if (res.error) throw new Error(res.error.message)
+
+        const auth = res.authorize as AuthorizeResponse
+        const account: DerivAccount = {
+          account_id: auth.loginid,
+          token,
+          currency: auth.currency,
+          is_virtual: auth.is_virtual === 1,
+        }
+
+        set({ status: 'AUTHENTICATED', account })
+      } catch (err) {
+        set({
+          status: 'ERROR',
+          error: err instanceof Error ? err.message : 'Authorization failed',
+        })
+      }
     })
 
     set({ socket })
@@ -49,20 +70,10 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
 
   setStatus: (status) => set({ status }),
 
-  setAuth: (token, account) => {
-    set({ token, account })
-  },
-
   logout: () => {
     const socket = get().socket
     socket?.destroy()
     clearAuth()
-    set({
-      status: 'AUTH_REQUIRED',
-      socket: null,
-      token: null,
-      account: null,
-      error: null,
-    })
+    set({ status: 'DISCONNECTED', socket: null, token: null, account: null, error: null })
   },
 }))

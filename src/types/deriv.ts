@@ -45,15 +45,25 @@ export interface Balance {
   loginid: string
 }
 
-export interface OAuthToken {
-  access_token: string
-  token_type: string
-  expires_in: number
-  scope: string
-}
-
 export interface DerivAccount {
   account_id: string
+  token: string
   currency: string
   is_virtual: boolean
+}
+
+export interface AuthorizeResponse {
+  loginid: string
+  currency: string
+  balance: number
+  is_virtual: number
+  email: string
+  fullname: string
+  scopes: string[]
+  account_list: Array<{
+    loginid: string
+    currency: string
+    is_virtual: number
+    token: string
+  }>
 }

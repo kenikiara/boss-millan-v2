@@ -2,10 +2,10 @@ import { useEffect } from 'react'
 import { useConnectionStore } from '../stores/connectionStore'
 
 export function DashboardPage() {
-  const { status, socket, initSocket } = useConnectionStore()
+  const { status, socket, token, initSocket } = useConnectionStore()
 
   useEffect(() => {
-    if (!socket) initSocket()
+    if (!socket && token) initSocket(token)
   }, [])
 
   return (
