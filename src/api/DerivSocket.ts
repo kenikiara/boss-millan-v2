@@ -14,7 +14,6 @@ export class DerivSocket {
   private ws: WebSocket | null = null
   private url: string
   private reqId = 1
-  private pendingRequests = new Map<number, QueuedRequest['resolve'] | ((err: Error) => void)>()
   private pendingResolvers = new Map<number, QueuedRequest['resolve']>()
   private pendingRejectors = new Map<number, (err: Error) => void>()
   private subscriptions = new Map<number, MessageHandler>()
