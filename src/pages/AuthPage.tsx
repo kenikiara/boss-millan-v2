@@ -68,7 +68,14 @@ export function AuthPage() {
           </div>
 
           {error && (
-            <p className="font-mono text-xs text-red-400">{error}</p>
+            <div className="border border-red-900 bg-[#1a0a0a] p-3 space-y-1">
+              <p className="font-mono text-xs text-red-400">connection failed</p>
+              <p className="font-mono text-xs text-[#64748b] break-all">{error}</p>
+            </div>
+          )}
+
+          {!error && status !== 'DISCONNECTED' && (
+            <p className="font-mono text-xs text-[#334155]">status: {status.toLowerCase()}</p>
           )}
 
           <button

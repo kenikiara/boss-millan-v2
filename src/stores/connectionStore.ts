@@ -38,7 +38,12 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
 
     const socket = new DerivSocket(DERIV_WS_URL, async (connected) => {
       if (!connected) {
-        set({ status: 'DISCONNECTED' })
+        const s = get().status
+        if (s === 'CONNECTING' || s === 'AUTHENTICATING') {
+          set({ status: 'ERROR', error: 'WebSocket connection failed. Check your internet connection.' })
+        } else {
+          set({ status: 'DISCONNECTED' })
+        }
         return
       }
 
