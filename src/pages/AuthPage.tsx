@@ -1,101 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { parseOAuthCallback, saveAccounts, saveSelectedAccount, startOAuthFlow } from '../api/auth'
 import { useConnectionStore } from '../stores/connectionStore'
 
-function AuthCallback() {
+export function AuthPage() {
   const navigate = useNavigate()
-  const { initSocket, token } = useConnectionStore()
-  const [error, setError] = useState<string | null>(null)
-  const [debugUrl, setDebugUrl] = useState<string>('')
+  const { status, token, error, initSocket } = useConnectionStore()
+  const [input, setInput] = useState('')
+  const [show, setShow] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    // show full callback URL for debugging
-    setDebugUrl(window.location.href)
-
-    if (token) {
+    if (token && status === 'AUTHENTICATED') {
       navigate('/dashboard', { replace: true })
-      return
     }
+  }, [status, token, navigate])
 
-    const errorParam = new URLSearchParams(window.location.search).get('error')
-    if (errorParam) {
-      const desc = new URLSearchParams(window.location.search).get('error_description')
-      setError(desc ?? errorParam)
-      return
-    }
-
-    const result = parseOAuthCallback()
-    if (!result || result.accounts.length === 0) {
-      setError('No accounts found in callback. Please try again.')
-      return
-    }
-
-    const { accounts } = result
-
-    // prefer real account over virtual
-    const selected = accounts.find((a) => !a.is_virtual) ?? accounts[0]
-
-    saveAccounts(accounts)
-    saveSelectedAccount(selected)
-    initSocket(selected.token)
-    navigate('/dashboard', { replace: true })
-  }, [])
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0b0e]">
-        <div className="text-center space-y-4 max-w-lg px-6">
-          <p className="text-red-400 font-mono text-sm tracking-wider">AUTH ERROR</p>
-          <p className="text-[#64748b] font-mono text-xs leading-relaxed">{error}</p>
-          {debugUrl && (
-            <p className="text-[#334155] font-mono text-xs break-all text-left border border-[#1f2330] p-2">
-              callback url: {debugUrl}
-            </p>
-          )}
-          <button
-            onClick={() => navigate('/', { replace: true })}
-            className="text-[#00d4a3] font-mono text-xs hover:underline"
-          >
-            ← back to login
-          </button>
-        </div>
-      </div>
-    )
+  const handleConnect = () => {
+    const t = input.trim()
+    if (!t) return
+    initSocket(t)
   }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleConnect()
+  }
+
+  const isLoading = status === 'CONNECTING' || status === 'AUTHENTICATING'
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0b0e]">
-      <div className="text-center space-y-3">
-        <div className="w-2 h-2 bg-[#00d4a3] rounded-full animate-pulse mx-auto" />
-        <p className="text-[#64748b] font-mono text-xs">connecting...</p>
-        {debugUrl && (
-          <p className="text-[#334155] font-mono text-xs break-all max-w-lg px-4">
-            {debugUrl}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
+      <div className="flex flex-col items-center gap-8 w-full max-w-sm px-6">
 
-function LoginPage() {
-  const token = useConnectionStore((s) => s.token)
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (token) navigate('/dashboard', { replace: true })
-  }, [token, navigate])
-
-  const handleLogin = () => {
-    setLoading(true)
-    startOAuthFlow()
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0b0e]">
-      <div className="flex flex-col items-center gap-8 p-8">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-mono font-bold text-[#e2e8f0] tracking-widest uppercase">
             Boss Millan
@@ -105,35 +40,74 @@ function LoginPage() {
           </p>
         </div>
 
-        <div className="w-px h-12 bg-[#1f2330]" />
+        <div className="w-px h-8 bg-[#1f2330]" />
 
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="flex items-center gap-3 px-6 py-3 border border-[#1f2330] hover:border-[#00d4a3] bg-[#111318] hover:bg-[#0d1f1a] text-[#e2e8f0] font-mono text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <span className="w-2 h-2 bg-[#00d4a3] rounded-full animate-pulse" />
-              <span>redirecting...</span>
-            </>
-          ) : (
-            <>
-              <span className="text-[#00d4a3] text-lg leading-none">⬡</span>
-              <span>connect with deriv</span>
-            </>
+        <div className="w-full space-y-3">
+          <label className="block font-mono text-xs text-[#64748b] tracking-wider uppercase">
+            Deriv API Token
+          </label>
+
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type={show ? 'text' : 'password'}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="paste your token here"
+              disabled={isLoading}
+              className="w-full bg-[#111318] border border-[#1f2330] focus:border-[#00d4a3] outline-none px-4 py-3 font-mono text-sm text-[#e2e8f0] placeholder-[#334155] transition-colors disabled:opacity-50 pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((s) => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#334155] hover:text-[#64748b] font-mono text-xs transition-colors"
+            >
+              {show ? 'hide' : 'show'}
+            </button>
+          </div>
+
+          {error && (
+            <p className="font-mono text-xs text-red-400">{error}</p>
           )}
-        </button>
 
-        <p className="text-[#334155] font-mono text-xs text-center max-w-xs">
-          you'll be redirected to deriv to authorize access. no passwords stored.
-        </p>
+          <button
+            onClick={handleConnect}
+            disabled={isLoading || !input.trim()}
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-[#1f2330] hover:border-[#00d4a3] bg-[#111318] hover:bg-[#0d1f1a] text-[#e2e8f0] font-mono text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <span className="w-2 h-2 bg-[#00d4a3] rounded-full animate-pulse" />
+                <span>{status === 'CONNECTING' ? 'connecting...' : 'authorizing...'}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[#00d4a3] text-lg leading-none">⬡</span>
+                <span>connect</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="w-full border-t border-[#1f2330] pt-6 space-y-2">
+          <p className="font-mono text-xs text-[#334155] text-center">
+            don't have a token?
+          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p className="font-mono text-xs text-[#334155] text-center leading-relaxed">
+              go to{' '}
+              <span className="text-[#64748b]">app.deriv.com → Settings → API Token</span>
+            </p>
+            <p className="font-mono text-xs text-[#334155] text-center">
+              create a token with{' '}
+              <span className="text-[#64748b]">Read</span> +{' '}
+              <span className="text-[#64748b]">Trade</span> scopes
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   )
-}
-
-export function AuthPage() {
-  const isCallback = window.location.pathname === '/auth/callback'
-  return isCallback ? <AuthCallback /> : <LoginPage />
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { DerivSocket } from '../api/DerivSocket'
-import { clearAuth, getSavedAccount, getSavedToken } from '../api/auth'
+import { clearAuth, getSavedAccount, getSavedToken, saveAccount, saveToken } from '../api/auth'
 import { DERIV_WS_URL } from '../constants'
 import type { AuthorizeResponse, DerivAccount } from '../types/deriv'
 
@@ -56,6 +56,8 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
           is_virtual: auth.is_virtual === 1,
         }
 
+        saveToken(token)
+        saveAccount(account)
         set({ status: 'AUTHENTICATED', account })
       } catch (err) {
         set({

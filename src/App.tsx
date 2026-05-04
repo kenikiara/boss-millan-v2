@@ -18,7 +18,6 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AuthPage />} />
-        <Route path="/auth/callback" element={<AuthPage />} />
         <Route
           path="/dashboard"
           element={

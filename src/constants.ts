@@ -1,6 +1,4 @@
 export const DERIV_APP_ID = 3376
-
-export const DERIV_AUTH_URL = 'https://oauth.deriv.com/oauth2/authorize'
 export const DERIV_WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`
 
 export const SYNTHETIC_SYMBOLS = [
@@ -35,5 +33,4 @@ export const RECONNECT_DELAY_MS = 3000
 export const PING_INTERVAL_MS = 30000
 
 export const AUTH_TOKEN_KEY = 'bm_token'
-export const AUTH_ACCOUNTS_KEY = 'bm_accounts'
 export const AUTH_SELECTED_ACCOUNT_KEY = 'bm_account'
