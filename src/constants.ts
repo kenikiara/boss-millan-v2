@@ -31,6 +31,14 @@ export const SYMBOL_LABELS: Record<SyntheticSymbol, string> = {
   stpRNG: 'Step Index',
 }
 
+// Known pip sizes from Deriv — used if active_symbols call fails
+export const FALLBACK_PIP_SIZES: Record<string, number> = {
+  R_10: 3, R_25: 3, R_50: 4, R_75: 4, R_100: 2,
+  '1HZ10V': 3, '1HZ25V': 3, '1HZ50V': 4, '1HZ100V': 2,
+  CRASH1000: 2, CRASH500: 2, BOOM1000: 2, BOOM500: 2,
+  stpRNG: 2,
+}
+
 export const WS_RATE_LIMIT       = 100
 export const MAX_SUBSCRIPTIONS   = 100
 export const RECONNECT_DELAY_MS  = 3000

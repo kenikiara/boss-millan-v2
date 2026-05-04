@@ -4,13 +4,8 @@ import { useMarketStore } from '../stores/marketStore'
 import { useSignalStore } from '../stores/signalStore'
 import { getPipSizes, getTickHistory, subscribeToTicks } from '../api/marketApi'
 import { generateSignal } from '../engine/signalGenerator'
-import { SYNTHETIC_SYMBOLS } from '../constants'
+import { SYNTHETIC_SYMBOLS, FALLBACK_PIP_SIZES } from '../constants'
 
-/**
- * Mounts when the user lands on a scanning page.
- * Loads history + subscribes to all synthetic symbols, then feeds ticks into
- * the signal generator on every update.
- */
 export function useScanner() {
   const socket     = useConnectionStore(s => s.socket)
   const status     = useConnectionStore(s => s.status)
@@ -18,15 +13,14 @@ export function useScanner() {
   const loadHistory = useMarketStore(s => s.loadHistory)
   const addTick    = useMarketStore(s => s.addTick)
   const setSubId   = useMarketStore(s => s.setSubId)
+  const setScannerPhase = useMarketStore(s => s.setScannerPhase)
   const resetMarket = useMarketStore(s => s.reset)
   const updateSignal = useSignalStore(s => s.updateSignal)
   const resetSignals = useSignalStore(s => s.reset)
 
-  // Keep a stable reference to store actions and current symbol data for the tick handler
   const marketRef = useRef({ addTick, setSubId, updateSignal })
   marketRef.current = { addTick, setSubId, updateSignal }
 
-  // Ref to track active subscription IDs for cleanup
   const subIdsRef = useRef<number[]>([])
 
   useEffect(() => {
@@ -40,31 +34,39 @@ export function useScanner() {
       resetMarket()
       resetSignals()
       subIdsRef.current = []
+      setScannerPhase('init')
 
-      // 1. Fetch pip sizes for all symbols at once
-      let pipSizes: Record<string, number>
+      // 1. Fetch pip sizes — fall back to hardcoded map if endpoint unsupported
+      let pipSizes: Record<string, number> = { ...FALLBACK_PIP_SIZES }
       try {
-        pipSizes = await getPipSizes(socket, SYNTHETIC_SYMBOLS)
-      } catch {
-        return
+        const fetched = await getPipSizes(socket, SYNTHETIC_SYMBOLS)
+        pipSizes = { ...pipSizes, ...fetched }
+        console.log('[scanner] pip sizes loaded from API', pipSizes)
+      } catch (err) {
+        console.warn('[scanner] active_symbols failed — using fallback pip sizes', err)
       }
       if (cancelled) return
 
-      // 2. Init all symbols in store
+      // 2. Init all symbols
+      setScannerPhase('loading')
       for (const sym of SYNTHETIC_SYMBOLS) {
         initSymbol(sym, pipSizes[sym] ?? 2)
       }
 
-      // 3. Load history + subscribe for each symbol sequentially to respect rate limits
+      // 3. Load history + subscribe per symbol
+      let subscribed = 0
       for (const sym of SYNTHETIC_SYMBOLS) {
         if (cancelled) break
 
         try {
           const prices = await getTickHistory(socket, sym)
           if (cancelled) break
-          if (prices.length) loadHistory(sym, prices)
-        } catch {
-          // history is best-effort; continue to subscribe
+          if (prices.length) {
+            loadHistory(sym, prices)
+            console.log(`[scanner] history loaded for ${sym}: ${prices.length} ticks`)
+          }
+        } catch (err) {
+          console.error(`[scanner] history failed for ${sym}`, err)
         }
 
         if (cancelled) break
@@ -73,8 +75,6 @@ export function useScanner() {
           const subId = await subscribeToTicks(socket, sym, (quote, _pipSize) => {
             const { addTick, updateSignal } = marketRef.current
             addTick(sym, quote)
-
-            // Re-read current prices from the store after the tick is added
             const symData = useMarketStore.getState().symbols[sym]
             if (!symData) return
             const raw = generateSignal(sym, symData.prices, symData.pipSize)
@@ -83,8 +83,19 @@ export function useScanner() {
           if (cancelled) break
           subIdsRef.current.push(subId)
           setSubId(sym, subId)
-        } catch {
-          // subscribe failure for one symbol is non-fatal
+          subscribed++
+          console.log(`[scanner] subscribed to ${sym} (subId=${subId}, total=${subscribed})`)
+        } catch (err) {
+          console.error(`[scanner] subscribe failed for ${sym}`, err)
+        }
+      }
+
+      if (!cancelled) {
+        if (subscribed === 0) {
+          setScannerPhase('error', 'No symbols could be subscribed. Check console for details.')
+        } else {
+          setScannerPhase('live')
+          console.log(`[scanner] live — ${subscribed}/${SYNTHETIC_SYMBOLS.length} symbols active`)
         }
       }
     }
@@ -93,7 +104,6 @@ export function useScanner() {
 
     return () => {
       cancelled = true
-      // Unsubscribe all — fire and forget
       if (socket) {
         for (const id of subIdsRef.current) {
           socket.send({ forget: id }).catch(() => {})

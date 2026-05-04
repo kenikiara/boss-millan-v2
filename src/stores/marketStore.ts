@@ -13,14 +13,19 @@ export interface SymbolData {
   ticksPerSec: number
 }
 
+export type ScannerPhase = 'idle' | 'init' | 'loading' | 'live' | 'error'
+
 interface MarketState {
   symbols: Record<string, SymbolData>
+  scannerPhase: ScannerPhase
+  scannerError: string | null
 
-  initSymbol:   (symbol: string, pipSize: number) => void
-  loadHistory:  (symbol: string, prices: number[]) => void
-  addTick:      (symbol: string, price: number) => void
-  setSubId:     (symbol: string, subId: number) => void
-  reset:        () => void
+  initSymbol:    (symbol: string, pipSize: number) => void
+  loadHistory:   (symbol: string, prices: number[]) => void
+  addTick:       (symbol: string, price: number) => void
+  setSubId:      (symbol: string, subId: number) => void
+  setScannerPhase: (phase: ScannerPhase, error?: string) => void
+  reset:         () => void
 }
 
 function emptySymbol(pipSize: number): SymbolData {
@@ -38,6 +43,8 @@ function emptySymbol(pipSize: number): SymbolData {
 
 export const useMarketStore = create<MarketState>((set, _get) => ({
   symbols: {},
+  scannerPhase: 'idle',
+  scannerError: null,
 
   initSymbol: (symbol, pipSize) => {
     set(s => ({
@@ -101,5 +108,7 @@ export const useMarketStore = create<MarketState>((set, _get) => ({
     })
   },
 
-  reset: () => set({ symbols: {} }),
+  setScannerPhase: (phase, error) => set({ scannerPhase: phase, scannerError: error ?? null }),
+
+  reset: () => set({ symbols: {}, scannerPhase: 'idle', scannerError: null }),
 }))
