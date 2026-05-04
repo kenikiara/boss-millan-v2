@@ -1,13 +1,10 @@
 import { useConnectionStore } from '../stores/connectionStore'
 import { useMarketStore } from '../stores/marketStore'
 import { useSignalStore } from '../stores/signalStore'
-import { useScanner } from '../hooks/useScanner'
 import { SignalCard } from '../components/signals/SignalCard'
 import { SYNTHETIC_SYMBOLS } from '../constants'
 
 export function DashboardPage() {
-  useScanner()
-
   const account       = useConnectionStore(s => s.account)
   const symbols       = useMarketStore(s => s.symbols)
   const getActiveSignals = useSignalStore(s => s.getActiveSignals)

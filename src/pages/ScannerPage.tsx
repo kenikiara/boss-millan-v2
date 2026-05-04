@@ -1,11 +1,8 @@
-import { useScanner } from '../hooks/useScanner'
 import { SymbolCard } from '../components/scanner/SymbolCard'
 import { SYNTHETIC_SYMBOLS } from '../constants'
 import type { SyntheticSymbol } from '../constants'
 
 export function ScannerPage() {
-  useScanner()
-
   return (
     <div className="p-6 space-y-6">
       <h2 className="font-mono text-sm text-[#e2e8f0] tracking-wider uppercase">Scanner</h2>

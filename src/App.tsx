@@ -20,26 +20,17 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route path="/auth/callback" element={<CallbackPage />} />
+        {/* Single shared layout — useScanner mounts once, survives page navigation */}
         <Route
-          path="/dashboard"
           element={
             <RequireAuth>
-              <AppLayout>
-                <DashboardPage />
-              </AppLayout>
+              <AppLayout />
             </RequireAuth>
           }
-        />
-        <Route
-          path="/scanner"
-          element={
-            <RequireAuth>
-              <AppLayout>
-                <ScannerPage />
-              </AppLayout>
-            </RequireAuth>
-          }
-        />
+        >
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/scanner" element={<ScannerPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

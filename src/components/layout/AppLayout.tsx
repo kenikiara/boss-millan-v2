@@ -1,13 +1,11 @@
-import { type ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useConnectionStore } from '../../stores/connectionStore'
+import { useScanner } from '../../hooks/useScanner'
 import { StatusDot } from './StatusDot'
 
-interface AppLayoutProps {
-  children: ReactNode
-}
+export function AppLayout() {
+  useScanner()
 
-export function AppLayout({ children }: AppLayoutProps) {
   const { logout, account } = useConnectionStore()
   const navigate = useNavigate()
 
@@ -64,7 +62,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </header>
 
       <main className="flex-1 overflow-auto">
-        {children}
+        <Outlet />
       </main>
     </div>
   )
