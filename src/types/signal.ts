@@ -1,25 +1,25 @@
-export type SignalState = 'SCANNING' | 'ACTIVE' | 'WEAKENING' | 'EXPIRED'
+export type ContractType =
+  | 'DIGITEVEN'
+  | 'DIGITODD'
+  | 'DIGITOVER'
+  | 'DIGITUNDER'
+  | 'DIGITMATCH'
+  | 'DIGITDIFF'
 
-export type ContractDirection = 'EVEN' | 'ODD' | 'OVER' | 'UNDER' | 'MATCH' | 'DIFFER'
-
-export interface SignalMetrics {
-  chiSquare: number
-  zScore: number
-  streakLength: number
-  expectedMaxStreak: number
-  digitCounts: number[]
-  totalTicks: number
-}
+export type SignalState = 'ACTIVE' | 'WEAKENING'
 
 export interface Signal {
   id: string
   symbol: string
-  contractType: string
-  direction: ContractDirection
+  contractType: ContractType
+  digit?: number        // DIGITMATCH / DIGITDIFF only
   state: SignalState
-  confidence: number
+  confidence: number    // 0–100
+  chiSquare: number
+  zScore: number
+  streak: number
+  streakType: 'even' | 'odd'
   estimatedRuns: number
-  metrics: SignalMetrics
-  createdAt: number
+  createdAt: number     // Date.now()
   updatedAt: number
 }
