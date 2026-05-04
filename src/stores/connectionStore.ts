@@ -36,11 +36,17 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
 
     set({ status: 'CONNECTING', error: null, token })
 
-    const socket = new DerivSocket(DERIV_WS_URL, async (connected) => {
+    const socket = new DerivSocket(DERIV_WS_URL, async (connected, closeCode, closeReason) => {
       if (!connected) {
         const s = get().status
         if (s === 'CONNECTING' || s === 'AUTHENTICATING') {
-          set({ status: 'ERROR', error: 'WebSocket connection failed. Check your internet connection.' })
+          let error = 'WebSocket connection failed. Check your internet connection.'
+          if (closeCode === 1006) {
+            error = 'Connection rejected (code 1006). App ID 3376 may not be registered for this domain — add boss-millan-v2.vercel.app in your Deriv app settings.'
+          } else if (closeCode && closeCode !== 1000) {
+            error = `WebSocket closed — code ${closeCode}${closeReason ? `: ${closeReason}` : ''}. Check your Deriv app registration.`
+          }
+          set({ status: 'ERROR', error })
         } else {
           set({ status: 'DISCONNECTED' })
         }
@@ -49,9 +55,12 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
 
       set({ status: 'AUTHENTICATING' })
 
+      const authTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Authorization timed out')), 10000)
+      )
+
       try {
-        const res = await socket.send({ authorize: token })
-        if (res.error) throw new Error(res.error.message)
+        const res = await Promise.race([socket.send({ authorize: token }), authTimeout])
 
         const auth = res.authorize as AuthorizeResponse
         const account: DerivAccount = {
@@ -65,8 +74,10 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         saveAccount(account)
         set({ status: 'AUTHENTICATED', account })
       } catch (err) {
+        socket.destroy()
         set({
           status: 'ERROR',
+          socket: null,
           error: err instanceof Error ? err.message : 'Authorization failed',
         })
       }

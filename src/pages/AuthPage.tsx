@@ -10,10 +10,16 @@ export function AuthPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (token && status === 'AUTHENTICATED') {
+    if (token && status === 'DISCONNECTED') {
+      initSocket(token)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (status === 'AUTHENTICATED') {
       navigate('/dashboard', { replace: true })
     }
-  }, [status, token, navigate])
+  }, [status, navigate])
 
   const handleConnect = () => {
     const t = input.trim()

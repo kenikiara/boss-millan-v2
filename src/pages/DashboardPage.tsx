@@ -1,12 +1,7 @@
-import { useEffect } from 'react'
 import { useConnectionStore } from '../stores/connectionStore'
 
 export function DashboardPage() {
-  const { status, socket, token, initSocket } = useConnectionStore()
-
-  useEffect(() => {
-    if (!socket && token) initSocket(token)
-  }, [])
+  const { status } = useConnectionStore()
 
   return (
     <div className="p-6 space-y-6">

@@ -2,7 +2,7 @@ import { DERIV_WS_URL, PING_INTERVAL_MS, RECONNECT_DELAY_MS, WS_RATE_LIMIT } fro
 import type { DerivRequest, DerivResponse } from '../types/deriv'
 
 type MessageHandler = (response: DerivResponse) => void
-type StatusHandler = (connected: boolean) => void
+type StatusHandler = (connected: boolean, closeCode?: number, closeReason?: string) => void
 
 interface QueuedRequest {
   payload: DerivRequest
@@ -43,7 +43,12 @@ export class DerivSocket {
     }
 
     this.ws.onmessage = (event: MessageEvent) => {
-      const data: DerivResponse = JSON.parse(event.data as string)
+      let data: DerivResponse
+      try {
+        data = JSON.parse(event.data as string)
+      } catch {
+        return
+      }
       const id = data.req_id
 
       if (id !== undefined) {
@@ -69,8 +74,8 @@ export class DerivSocket {
       }
     }
 
-    this.ws.onclose = () => {
-      this.onStatusChange(false)
+    this.ws.onclose = (event: CloseEvent) => {
+      this.onStatusChange(false, event.code, event.reason)
       this.clearTimers()
       if (!this.destroyed) {
         this.reconnectTimer = setTimeout(() => this.connect(), RECONNECT_DELAY_MS)
@@ -148,9 +153,8 @@ export class DerivSocket {
 
       const item: QueuedRequest = {
         payload: fullPayload,
-        resolve: (res) => {
+        resolve: () => {
           resolve(id)
-          handler(res)
         },
         reject: (err) => {
           this.subscriptions.delete(id)

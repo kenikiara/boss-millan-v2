@@ -7,9 +7,9 @@ import { ScannerPage } from './pages/ScannerPage'
 import { useConnectionStore } from './stores/connectionStore'
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const token = useConnectionStore((s) => s.token)
+  const status = useConnectionStore((s) => s.status)
   const location = useLocation()
-  if (!token) return <Navigate to="/" state={{ from: location }} replace />
+  if (status !== 'AUTHENTICATED') return <Navigate to="/" state={{ from: location }} replace />
   return <>{children}</>
 }
 
