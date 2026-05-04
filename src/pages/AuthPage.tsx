@@ -7,8 +7,12 @@ function AuthCallback() {
   const navigate = useNavigate()
   const { initSocket, token } = useConnectionStore()
   const [error, setError] = useState<string | null>(null)
+  const [debugUrl, setDebugUrl] = useState<string>('')
 
   useEffect(() => {
+    // show full callback URL for debugging
+    setDebugUrl(window.location.href)
+
     if (token) {
       navigate('/dashboard', { replace: true })
       return
@@ -41,9 +45,14 @@ function AuthCallback() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0b0e]">
-        <div className="text-center space-y-4 max-w-sm px-6">
+        <div className="text-center space-y-4 max-w-lg px-6">
           <p className="text-red-400 font-mono text-sm tracking-wider">AUTH ERROR</p>
           <p className="text-[#64748b] font-mono text-xs leading-relaxed">{error}</p>
+          {debugUrl && (
+            <p className="text-[#334155] font-mono text-xs break-all text-left border border-[#1f2330] p-2">
+              callback url: {debugUrl}
+            </p>
+          )}
           <button
             onClick={() => navigate('/', { replace: true })}
             className="text-[#00d4a3] font-mono text-xs hover:underline"
@@ -60,6 +69,11 @@ function AuthCallback() {
       <div className="text-center space-y-3">
         <div className="w-2 h-2 bg-[#00d4a3] rounded-full animate-pulse mx-auto" />
         <p className="text-[#64748b] font-mono text-xs">connecting...</p>
+        {debugUrl && (
+          <p className="text-[#334155] font-mono text-xs break-all max-w-lg px-4">
+            {debugUrl}
+          </p>
+        )}
       </div>
     </div>
   )
