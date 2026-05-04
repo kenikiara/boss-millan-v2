@@ -15,6 +15,9 @@ export interface Tick {
   epoch: number
   quote: number
   pip_size: number
+  ask?: number
+  bid?: number
+  id?: string
 }
 
 export interface TickHistory {
@@ -23,12 +26,13 @@ export interface TickHistory {
 }
 
 export interface ActiveSymbol {
-  symbol: string
-  display_name: string
+  underlying_symbol: string
+  underlying_symbol_name: string
   market: string
-  market_display_name: string
+  submarket?: string
+  pip_size: number
+  exchange_is_open: number
   is_trading_suspended: number
-  pip: number
 }
 
 export interface ContractInfo {
@@ -43,27 +47,4 @@ export interface Balance {
   currency: string
   id: string
   loginid: string
-}
-
-export interface DerivAccount {
-  account_id: string
-  token: string
-  currency: string
-  is_virtual: boolean
-}
-
-export interface AuthorizeResponse {
-  loginid: string
-  currency: string
-  balance: number
-  is_virtual: number
-  email: string
-  fullname: string
-  scopes: string[]
-  account_list: Array<{
-    loginid: string
-    currency: string
-    is_virtual: number
-    token: string
-  }>
 }

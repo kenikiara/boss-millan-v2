@@ -1,97 +1,81 @@
 import { create } from 'zustand'
 import { DerivSocket } from '../api/DerivSocket'
-import { clearAuth, getSavedAccount, getSavedToken, saveAccount, saveToken } from '../api/auth'
-import { DERIV_WS_URL } from '../constants'
-import type { AuthorizeResponse, DerivAccount } from '../types/deriv'
+import { clearAuth } from '../api/auth'
+import type { DerivAccount } from '../api/derivRest'
+import { getOtpUrl } from '../api/derivRest'
+import { RECONNECT_DELAY_MS } from '../constants'
 
 export type ConnectionStatus =
   | 'DISCONNECTED'
   | 'CONNECTING'
-  | 'AUTHENTICATING'
   | 'AUTHENTICATED'
   | 'ERROR'
 
 interface ConnectionState {
   status: ConnectionStatus
   socket: DerivSocket | null
-  token: string | null
   account: DerivAccount | null
+  accessToken: string | null
   error: string | null
 
-  initSocket: (token: string) => void
-  setStatus: (status: ConnectionStatus) => void
+  connect: (otpUrl: string, account: DerivAccount, accessToken: string) => void
   logout: () => void
 }
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   status: 'DISCONNECTED',
   socket: null,
-  token: getSavedToken(),
-  account: getSavedAccount(),
+  account: null,
+  accessToken: null,
   error: null,
 
-  initSocket: (token: string) => {
+  connect: (otpUrl, account, accessToken) => {
     const existing = get().socket
     if (existing) existing.destroy()
 
-    set({ status: 'CONNECTING', error: null, token })
+    set({ status: 'CONNECTING', error: null, account, accessToken })
 
-    const socket = new DerivSocket(DERIV_WS_URL, async (connected, closeCode, closeReason) => {
+    const socket = new DerivSocket(otpUrl, async (connected, closeCode, closeReason) => {
       if (!connected) {
-        const s = get().status
-        if (s === 'CONNECTING' || s === 'AUTHENTICATING') {
-          let error = 'WebSocket connection failed. Check your internet connection.'
-          if (closeCode === 1006) {
-            error = 'Connection rejected (code 1006). App ID 3376 may not be registered for this domain — add boss-millan-v2.vercel.app in your Deriv app settings.'
-          } else if (closeCode && closeCode !== 1000) {
-            error = `WebSocket closed — code ${closeCode}${closeReason ? `: ${closeReason}` : ''}. Check your Deriv app registration.`
-          }
-          set({ status: 'ERROR', error })
-        } else {
-          set({ status: 'DISCONNECTED' })
+        const { status: s, account: acc, accessToken: token } = get()
+
+        // Unexpected disconnect from authenticated state — reconnect with fresh OTP
+        if (s === 'AUTHENTICATED' && acc && token) {
+          set({ status: 'CONNECTING' })
+          setTimeout(async () => {
+            try {
+              const freshOtpUrl = await getOtpUrl(token, acc.account_id)
+              get().connect(freshOtpUrl, acc, token)
+            } catch {
+              set({ status: 'ERROR', socket: null, error: 'Reconnection failed — please log in again.' })
+            }
+          }, RECONNECT_DELAY_MS)
+          return
         }
+
+        // Failed to connect in the first place
+        if (s === 'CONNECTING') {
+          let error = 'WebSocket connection failed.'
+          if (closeCode === 1006) error = `Connection rejected (code 1006)${closeReason ? `: ${closeReason}` : ''}`
+          else if (closeCode && closeCode !== 1000) error = `WebSocket closed — code ${closeCode}`
+          set({ status: 'ERROR', socket: null, error })
+          return
+        }
+
+        set({ status: 'DISCONNECTED', socket: null })
         return
       }
 
-      set({ status: 'AUTHENTICATING' })
-
-      const authTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Authorization timed out')), 10000)
-      )
-
-      try {
-        const res = await Promise.race([socket.send({ authorize: token }), authTimeout])
-
-        const auth = res.authorize as AuthorizeResponse
-        const account: DerivAccount = {
-          account_id: auth.loginid,
-          token,
-          currency: auth.currency,
-          is_virtual: auth.is_virtual === 1,
-        }
-
-        saveToken(token)
-        saveAccount(account)
-        set({ status: 'AUTHENTICATED', account })
-      } catch (err) {
-        socket.destroy()
-        set({
-          status: 'ERROR',
-          socket: null,
-          error: err instanceof Error ? err.message : 'Authorization failed',
-        })
-      }
+      // OTP-authenticated — no authorize message needed
+      set({ status: 'AUTHENTICATED' })
     })
 
     set({ socket })
   },
 
-  setStatus: (status) => set({ status }),
-
   logout: () => {
-    const socket = get().socket
-    socket?.destroy()
+    get().socket?.destroy()
     clearAuth()
-    set({ status: 'DISCONNECTED', socket: null, token: null, account: null, error: null })
+    set({ status: 'DISCONNECTED', socket: null, account: null, accessToken: null, error: null })
   },
 }))

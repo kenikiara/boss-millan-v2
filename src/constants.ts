@@ -1,5 +1,9 @@
-export const DERIV_APP_ID = 1 // TODO: replace with BossMillan25 actual App ID from developers.deriv.com
-export const DERIV_WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`
+export const DERIV_CLIENT_ID = '3376QbHCFpokjovIRJo1P'
+
+export const DERIV_AUTH_ENDPOINT  = 'https://auth.deriv.com/oauth2/auth'
+export const DERIV_TOKEN_ENDPOINT = 'https://auth.deriv.com/oauth2/token'
+export const DERIV_REST_BASE      = 'https://api.derivws.com'
+export const DERIV_WS_PUBLIC      = 'wss://api.derivws.com/trading/v1/options/ws/public'
 
 export const SYNTHETIC_SYMBOLS = [
   'R_10', 'R_25', 'R_50', 'R_75', 'R_100',
@@ -27,10 +31,12 @@ export const SYMBOL_LABELS: Record<SyntheticSymbol, string> = {
   stpRNG: 'Step Index',
 }
 
-export const WS_RATE_LIMIT = 100
-export const MAX_SUBSCRIPTIONS = 100
-export const RECONNECT_DELAY_MS = 3000
-export const PING_INTERVAL_MS = 30000
+export const WS_RATE_LIMIT       = 100
+export const MAX_SUBSCRIPTIONS   = 100
+export const RECONNECT_DELAY_MS  = 3000
+export const PING_INTERVAL_MS    = 30000
 
-export const AUTH_TOKEN_KEY = 'bm_token'
-export const AUTH_SELECTED_ACCOUNT_KEY = 'bm_account'
+export const AUTH_ACCESS_TOKEN_KEY = 'bm_access_token'
+export const AUTH_ACCOUNT_KEY      = 'bm_account'
+export const PKCE_VERIFIER_KEY     = 'bm_pkce_verifier'
+export const OAUTH_STATE_KEY       = 'bm_oauth_state'

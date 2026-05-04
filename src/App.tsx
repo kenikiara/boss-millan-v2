@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { AuthPage } from './pages/AuthPage'
+import { CallbackPage } from './pages/CallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ScannerPage } from './pages/ScannerPage'
 import { useConnectionStore } from './stores/connectionStore'
@@ -18,6 +19,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<CallbackPage />} />
         <Route
           path="/dashboard"
           element={

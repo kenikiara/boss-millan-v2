@@ -1,4 +1,4 @@
-import { DERIV_WS_URL, PING_INTERVAL_MS, RECONNECT_DELAY_MS, WS_RATE_LIMIT } from '../constants'
+import { PING_INTERVAL_MS, WS_RATE_LIMIT } from '../constants'
 import type { DerivRequest, DerivResponse } from '../types/deriv'
 
 type MessageHandler = (response: DerivResponse) => void
@@ -21,11 +21,10 @@ export class DerivSocket {
   private requestsThisSecond = 0
   private rateLimitTimer: ReturnType<typeof setInterval> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private destroyed = false
   private onStatusChange: StatusHandler
 
-  constructor(url = DERIV_WS_URL, onStatusChange: StatusHandler = () => {}) {
+  constructor(url: string, onStatusChange: StatusHandler = () => {}) {
     this.url = url
     this.onStatusChange = onStatusChange
     this.connect()
@@ -75,11 +74,13 @@ export class DerivSocket {
     }
 
     this.ws.onclose = (event: CloseEvent) => {
-      this.onStatusChange(false, event.code, event.reason)
       this.clearTimers()
-      if (!this.destroyed) {
-        this.reconnectTimer = setTimeout(() => this.connect(), RECONNECT_DELAY_MS)
-      }
+      // Reject all pending requests so callers don't hang
+      const err = new Error(`WebSocket closed (code ${event.code})`)
+      this.pendingRejectors.forEach(reject => reject(err))
+      this.pendingResolvers.clear()
+      this.pendingRejectors.clear()
+      this.onStatusChange(false, event.code, event.reason)
     }
 
     this.ws.onerror = () => {
@@ -130,13 +131,9 @@ export class DerivSocket {
     return new Promise((resolve, reject) => {
       const id = this.reqId++
       const fullPayload = { ...payload, req_id: id }
-
       const item: QueuedRequest = { payload: fullPayload, resolve, reject }
 
-      if (
-        this.ws?.readyState === WebSocket.OPEN &&
-        this.requestsThisSecond < WS_RATE_LIMIT
-      ) {
+      if (this.ws?.readyState === WebSocket.OPEN && this.requestsThisSecond < WS_RATE_LIMIT) {
         this.dispatchRaw(item)
       } else {
         this.queue.push(item)
@@ -153,19 +150,14 @@ export class DerivSocket {
 
       const item: QueuedRequest = {
         payload: fullPayload,
-        resolve: () => {
-          resolve(id)
-        },
+        resolve: () => { resolve(id) },
         reject: (err) => {
           this.subscriptions.delete(id)
           reject(err)
         },
       }
 
-      if (
-        this.ws?.readyState === WebSocket.OPEN &&
-        this.requestsThisSecond < WS_RATE_LIMIT
-      ) {
+      if (this.ws?.readyState === WebSocket.OPEN && this.requestsThisSecond < WS_RATE_LIMIT) {
         this.dispatchRaw(item)
       } else {
         this.queue.push(item)
@@ -191,7 +183,6 @@ export class DerivSocket {
   destroy() {
     this.destroyed = true
     this.clearTimers()
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.ws?.close()
     this.ws = null
     this.queue = []
