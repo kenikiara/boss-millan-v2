@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { parseOAuthCallback, saveAccounts, saveSelectedAccount, startOAuthFlow } from '../api/auth'
 import { useConnectionStore } from '../stores/connectionStore'
 
-const REDIRECT_URI = `${window.location.origin}/auth/callback`
-
 function AuthCallback() {
   const navigate = useNavigate()
   const { initSocket, token } = useConnectionStore()
@@ -78,7 +76,7 @@ function LoginPage() {
 
   const handleLogin = () => {
     setLoading(true)
-    startOAuthFlow(REDIRECT_URI)
+    startOAuthFlow()
   }
 
   return (

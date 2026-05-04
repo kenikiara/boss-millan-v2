@@ -7,12 +7,11 @@ import {
 } from '../constants'
 import type { DerivAccount } from '../types/deriv'
 
-export function startOAuthFlow(redirectUri: string): void {
+export function startOAuthFlow(): void {
   const params = new URLSearchParams({
     app_id: String(DERIV_APP_ID),
     l: 'EN',
     brand: 'deriv',
-    redirect_uri: redirectUri,
   })
   window.location.href = `${DERIV_AUTH_URL}?${params.toString()}`
 }
