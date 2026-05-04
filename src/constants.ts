@@ -1,4 +1,4 @@
-export const DERIV_APP_ID = 3376
+export const DERIV_APP_ID = 1 // TODO: replace with BossMillan25 actual App ID from developers.deriv.com
 export const DERIV_WS_URL = `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`
 
 export const SYNTHETIC_SYMBOLS = [
